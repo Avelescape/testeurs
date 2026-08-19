@@ -13,6 +13,23 @@
   <title>Mise en marche du phare</title>
 
   <style>
+    :root {
+      /*
+        Position calculée à partir des coordonnées GIMP :
+
+        Centre du disque :
+        X = 618 px
+        Y = 709 px
+
+        Dimensions de la photo :
+        943 × 1668 px
+      */
+
+      --manivelle-x: 54.08%;
+      --manivelle-y: 34.31%;
+      --manivelle-largeur: 58%;
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -20,6 +37,7 @@
     html,
     body {
       margin: 0;
+      width: 100%;
       min-height: 100%;
       background: #080604;
       color: white;
@@ -31,24 +49,42 @@
     body {
       display: grid;
       place-items: center;
+      min-height: 100svh;
     }
 
+    /*
+      La scène conserve exactement les proportions
+      de l’image originale : 943 × 1668 pixels.
+    */
     .scene {
       position: relative;
-      width: min(100vw, calc(100svh * 943 / 1668));
-      height: 100svh;
-      max-height: calc(100vw * 1668 / 943);
+
+      width: min(
+        100vw,
+        calc(100svh * 943 / 1668)
+      );
+
+      aspect-ratio: 943 / 1668;
+
       overflow: hidden;
       background: #130b04;
       isolation: isolate;
     }
 
+    /*
+      L’image remplit exactement la scène.
+      Elle n’est jamais recadrée.
+    */
     .fond {
       position: absolute;
       inset: 0;
+
+      display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+
+      object-fit: fill;
+
       user-select: none;
       -webkit-user-drag: none;
       pointer-events: none;
@@ -56,47 +92,67 @@
 
     .voile {
       position: absolute;
+      z-index: 2;
       inset: 0;
+
       background:
         linear-gradient(
           #0003 0 10%,
           transparent 22% 73%,
           #0005
         );
+
       pointer-events: none;
     }
 
     .consigne {
       position: absolute;
-      z-index: 5;
-      top: max(14px, env(safe-area-inset-top));
+      z-index: 6;
+
+      top: max(
+        14px,
+        env(safe-area-inset-top)
+      );
+
       left: 50%;
       transform: translateX(-50%);
+
       width: max-content;
       max-width: 88%;
+
       padding: 9px 15px;
+
       border: 1px solid #e8bd69aa;
       border-radius: 999px;
+
       background: #160d07d9;
       box-shadow: 0 4px 18px #0009;
+
       color: #ffe7ad;
       text-align: center;
+
       font-size: clamp(14px, 4vw, 19px);
       letter-spacing: 0.02em;
-      transition: 0.35s;
+
+      transition: opacity 0.35s;
     }
 
     .compteur {
       position: absolute;
-      z-index: 5;
+      z-index: 6;
+
       top: 18%;
       right: 4%;
+
       width: 72px;
       padding: 9px 5px;
+
       border: 1px solid #d7a84e;
       border-radius: 9px;
+
       background: #160d07dc;
       box-shadow: 0 5px 20px #000a;
+
       text-align: center;
       color: #ffe4a1;
     }
@@ -113,29 +169,34 @@
     }
 
     /*
-      Position de la manivelle sur l’image.
-
-      left et top permettent de la déplacer.
-      width permet de modifier sa taille.
+      La manivelle est positionnée par rapport
+      aux proportions de la photo du phare.
     */
     .manivelle-zone {
       position: absolute;
-      z-index: 4;
+      z-index: 5;
 
-      left: 37.3%;
-      top: 49.5%;
-      width: 58%;
-
-      aspect-ratio: 1774 / 887;
-      touch-action: none;
-      cursor: grab;
-      filter: drop-shadow(0 7px 5px #000b);
+      left: var(--manivelle-x);
+      top: var(--manivelle-y);
+      width: var(--manivelle-largeur);
 
       /*
-        Axe de rotation situé au centre du disque
-        de la manivelle.
+        Dimensions de l’image de la manivelle :
+        1774 × 887 pixels.
+      */
+      aspect-ratio: 1774 / 887;
+
+      /*
+        Le centre du disque se trouve à 19,75 %
+        de la largeur de l’image de la manivelle.
       */
       transform-origin: 19.75% 50%;
+
+      touch-action: none;
+      cursor: grab;
+
+      filter: drop-shadow(0 7px 5px #000b);
+
       will-change: transform;
     }
 
@@ -147,7 +208,9 @@
       display: block;
       width: 100%;
       height: 100%;
+
       object-fit: contain;
+
       user-select: none;
       -webkit-user-drag: none;
       pointer-events: none;
@@ -155,34 +218,57 @@
 
     .aide {
       position: absolute;
-      z-index: 5;
+      z-index: 6;
+
       left: 50%;
-      bottom: max(18px, env(safe-area-inset-bottom));
+
+      bottom: max(
+        18px,
+        env(safe-area-inset-bottom)
+      );
+
       transform: translateX(-50%);
+
       width: max-content;
       max-width: 90%;
+
       padding: 8px 13px;
+
       border-radius: 7px;
-      background: #0d0805c9;
+
+      background: #0d0805d9;
       color: #f2d69e;
+
       font-size: clamp(12px, 3.4vw, 16px);
       text-align: center;
+
       pointer-events: none;
-      transition: 0.4s;
+
+      transition: opacity 0.4s;
     }
 
+    /*
+      Fenêtre de réussite.
+    */
     .termine {
       position: absolute;
       z-index: 10;
       inset: 0;
+
       display: grid;
       place-items: center;
+
       padding: 24px;
+
       background: #080500a8;
       backdrop-filter: blur(3px);
+
       opacity: 0;
       visibility: hidden;
-      transition: 0.55s;
+
+      transition:
+        opacity 0.55s,
+        visibility 0.55s;
     }
 
     .termine.visible {
@@ -193,10 +279,19 @@
     .carte {
       width: min(360px, 90%);
       padding: 25px 20px;
+
       border: 2px solid #d6a74e;
       border-radius: 14px;
-      background: linear-gradient(145deg, #3a210d, #130b05);
+
+      background:
+        linear-gradient(
+          145deg,
+          #3a210d,
+          #130b05
+        );
+
       box-shadow: 0 15px 50px #000;
+
       text-align: center;
       color: #ffe9b7;
     }
@@ -214,11 +309,15 @@
     .carte button {
       margin-top: 18px;
       padding: 11px 19px;
+
       border: 1px solid #ffe0a0;
       border-radius: 8px;
+
       background: #b77822;
       color: #fff8e8;
+
       font: bold 16px Georgia, serif;
+
       cursor: pointer;
     }
 
@@ -234,11 +333,12 @@
 
   <main class="scene" id="scene">
 
-    <!-- Image de fond -->
+    <!-- Image du phare -->
     <img
       class="fond"
-      src="images/1-png3.png"
+      src="images/1-pngpharestop(2).png"
       alt="Salle du mécanisme du phare"
+      draggable="false"
     >
 
     <div class="voile"></div>
@@ -263,24 +363,29 @@
       aria-valuemax="4"
       aria-valuenow="0"
     >
+
       <img
         class="manivelle"
-        src="images/1-pngmanivelle.png"
+        src="images/1-pngmanivelle(1).png"
         alt=""
+        draggable="false"
       >
+
     </div>
 
     <div class="aide" id="aide">
       Posez le doigt sur la manivelle et faites-la tourner
     </div>
 
-    <!-- Message affiché après quatre tours -->
+    <!-- Fenêtre affichée après quatre tours -->
     <section
       class="termine"
       id="termine"
       aria-hidden="true"
     >
+
       <div class="carte">
+
         <h1>Mécanisme enclenché !</h1>
 
         <p>
@@ -291,7 +396,9 @@
         <button type="button" id="continuer">
           Continuer
         </button>
+
       </div>
+
     </section>
 
   </main>
@@ -299,42 +406,67 @@
   <script>
     (() => {
       /*
-        Nombre de tours nécessaires.
+        Nombre de tours à réaliser.
       */
       const TOURS_REQUIS = 4;
 
       /*
-        Indiquez ici la page à ouvrir après la réussite.
+        Page ouverte après avoir appuyé
+        sur le bouton Continuer.
 
         Exemple :
         const LIEN_SUIVANT = "phare-allume.html";
-
-        Laissez vide pour ne pas changer de page.
       */
       const LIEN_SUIVANT = "";
 
-      const scene = document.querySelector("#scene");
-      const manivelle = document.querySelector("#manivelle");
-      const compteur = document.querySelector("#nombreTours");
-      const consigne = document.querySelector("#consigne");
-      const aide = document.querySelector("#aide");
-      const termine = document.querySelector("#termine");
-      const continuer = document.querySelector("#continuer");
+      /*
+        Dimensions exactes de la photo du phare.
+      */
+      const LARGEUR_PHOTO = 943;
+      const HAUTEUR_PHOTO = 1668;
+
+      /*
+        Coordonnées relevées dans GIMP.
+      */
+      const AXE_GIMP_X = 618;
+      const AXE_GIMP_Y = 709;
+
+      const scene =
+        document.querySelector("#scene");
+
+      const manivelle =
+        document.querySelector("#manivelle");
+
+      const compteur =
+        document.querySelector("#nombreTours");
+
+      const consigne =
+        document.querySelector("#consigne");
+
+      const aide =
+        document.querySelector("#aide");
+
+      const termine =
+        document.querySelector("#termine");
+
+      const continuer =
+        document.querySelector("#continuer");
 
       let actif = false;
       let dernierAngle = 0;
+
       let rotation = 0;
       let progression = 0;
       let tours = 0;
+
       let fini = false;
 
       let pivotX = 0;
       let pivotY = 0;
 
       /*
-        Variables utilisées pour produire les sons.
-
-        Aucun fichier audio supplémentaire n’est nécessaire.
+        Variables utilisées pour créer les sons.
+        Aucun fichier audio n’est nécessaire.
       */
       let audioCtx;
       let moteur;
@@ -354,8 +486,8 @@
       }
 
       /*
-        Son mécanique joué pendant que le joueur
-        actionne la manivelle.
+        Bruit mécanique entendu lorsque
+        le joueur tourne la manivelle.
       */
       function demarrerSonMecanique() {
         preparerAudio();
@@ -364,8 +496,11 @@
           return;
         }
 
-        moteur = audioCtx.createOscillator();
-        gainMoteur = audioCtx.createGain();
+        moteur =
+          audioCtx.createOscillator();
+
+        gainMoteur =
+          audioCtx.createGain();
 
         moteur.type = "sawtooth";
         moteur.frequency.value = 46;
@@ -415,13 +550,16 @@
       }
 
       /*
-        Son distinct joué à chaque tour complet.
+        Son joué après chaque tour complet.
       */
       function jouerSonTour() {
         preparerAudio();
 
-        const oscillateur = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const oscillateur =
+          audioCtx.createOscillator();
+
+        const gain =
+          audioCtx.createGain();
 
         oscillateur.type = "triangle";
 
@@ -430,10 +568,11 @@
           audioCtx.currentTime
         );
 
-        oscillateur.frequency.exponentialRampToValueAtTime(
-          760,
-          audioCtx.currentTime + 0.12
-        );
+        oscillateur.frequency
+          .exponentialRampToValueAtTime(
+            760,
+            audioCtx.currentTime + 0.12
+          );
 
         gain.gain.setValueAtTime(
           0.16,
@@ -461,8 +600,31 @@
       }
 
       /*
-        Calcule l’angle du doigt par rapport à
-        l’axe de la manivelle.
+        Calcule l’emplacement du centre de rotation
+        à partir des coordonnées relevées dans GIMP.
+      */
+      function calculerPositionAxe() {
+        const sceneRect =
+          scene.getBoundingClientRect();
+
+        const echelleX =
+          sceneRect.width / LARGEUR_PHOTO;
+
+        const echelleY =
+          sceneRect.height / HAUTEUR_PHOTO;
+
+        pivotX =
+          sceneRect.left +
+          AXE_GIMP_X * echelleX;
+
+        pivotY =
+          sceneRect.top +
+          AXE_GIMP_Y * echelleY;
+      }
+
+      /*
+        Calcule l’angle du doigt autour
+        du centre du disque.
       */
       function obtenirAngleDuDoigt(evenement) {
         return (
@@ -476,7 +638,8 @@
       }
 
       /*
-        Début du geste.
+        Le joueur pose son doigt
+        sur la manivelle.
       */
       function commencerRotation(evenement) {
         if (fini) {
@@ -485,22 +648,7 @@
 
         evenement.preventDefault();
 
-        const sceneRect =
-          scene.getBoundingClientRect();
-
-        /*
-          L’axe se trouve à 19,75 % de la largeur
-          de l’image de la manivelle.
-        */
-        pivotX =
-          sceneRect.left +
-          manivelle.offsetLeft +
-          manivelle.offsetWidth * 0.1975;
-
-        pivotY =
-          sceneRect.top +
-          manivelle.offsetTop +
-          manivelle.offsetHeight * 0.5;
+        calculerPositionAxe();
 
         actif = true;
 
@@ -517,7 +665,7 @@
       }
 
       /*
-        Rotation de la manivelle avec le doigt.
+        Le joueur tourne la manivelle.
       */
       function faireTourner(evenement) {
         if (!actif || fini) {
@@ -533,8 +681,8 @@
           nouvelAngle - dernierAngle;
 
         /*
-          Évite les sauts lorsque l’angle passe
-          de 180 degrés à -180 degrés.
+          Empêche le saut de rotation lorsque
+          l’angle passe de 180° à -180°.
         */
         if (difference > 180) {
           difference -= 360;
@@ -549,8 +697,11 @@
         rotation += difference;
 
         /*
-          Un retour dans le sens inverse retire
-          de la progression.
+          Les tours doivent être réalisés
+          dans le sens horaire.
+
+          Si le joueur tourne en arrière,
+          la progression diminue.
         */
         progression = Math.max(
           0,
@@ -565,9 +716,6 @@
           Math.floor(progression / 360)
         );
 
-        /*
-          Un nouveau tour complet vient d’être accompli.
-        */
         if (nouveauxTours > tours) {
           tours = nouveauxTours;
 
@@ -654,10 +802,17 @@
         }, 350);
 
         if (navigator.vibrate) {
-          navigator.vibrate([80, 60, 120]);
+          navigator.vibrate([
+            80,
+            60,
+            120
+          ]);
         }
       }
 
+      /*
+        Événements tactiles et souris.
+      */
       manivelle.addEventListener(
         "pointerdown",
         commencerRotation
@@ -678,6 +833,23 @@
         terminerRotation
       );
 
+      /*
+        Recalcule l’axe après un changement
+        de taille ou d’orientation.
+      */
+      window.addEventListener(
+        "resize",
+        calculerPositionAxe
+      );
+
+      window.addEventListener(
+        "orientationchange",
+        calculerPositionAxe
+      );
+
+      /*
+        Bouton Continuer.
+      */
       continuer.addEventListener(
         "click",
         () => {
@@ -696,6 +868,11 @@
           }
         }
       );
+
+      /*
+        Premier calcul au chargement.
+      */
+      calculerPositionAxe();
     })();
   </script>
 
