@@ -319,80 +319,6 @@
       transition: opacity 0.4s;
     }
 
-    /*
-      Fenêtre de réussite.
-    */
-    .termine {
-      position: absolute;
-      z-index: 10;
-      inset: 0;
-
-      display: grid;
-      place-items: center;
-
-      padding: 24px;
-
-      background: #080500a8;
-      backdrop-filter: blur(3px);
-
-      opacity: 0;
-      visibility: hidden;
-
-      transition:
-        opacity 0.55s,
-        visibility 0.55s;
-    }
-
-    .termine.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .carte {
-      width: min(360px, 90%);
-      padding: 25px 20px;
-
-      border: 2px solid #d6a74e;
-      border-radius: 14px;
-
-      background:
-        linear-gradient(
-          145deg,
-          #3a210d,
-          #130b05
-        );
-
-      box-shadow: 0 15px 50px #000;
-
-      text-align: center;
-      color: #ffe9b7;
-    }
-
-    .carte h1 {
-      margin: 0 0 9px;
-      font-size: 25px;
-    }
-
-    .carte p {
-      margin: 0;
-      line-height: 1.45;
-    }
-
-    .carte button {
-      margin-top: 18px;
-      padding: 11px 19px;
-
-      border: 1px solid #ffe0a0;
-      border-radius: 8px;
-
-      background: #b77822;
-      color: #fff8e8;
-
-      font: bold 16px Georgia, serif;
-
-      cursor: pointer;
-    }
-
     @media (prefers-reduced-motion: reduce) {
       * {
         transition: none !important;
@@ -408,6 +334,7 @@
     <!-- Image du phare -->
     <img
       class="fond"
+      id="fond"
       src="images/1-png3.png"
       alt="Salle du mécanisme du phare"
       draggable="false"
@@ -469,23 +396,6 @@
       Posez le doigt sur la manivelle et faites-la tourner
     </div>
 
-    <!-- Fenêtre affichée après quatre tours -->
-    <section
-      class="termine"
-      id="termine"
-      aria-hidden="true"
-    >
-
-      <div class="carte">
-
-        <button type="button" id="continuer">
-          Continuer
-        </button>
-
-      </div>
-
-    </section>
-
   </main>
 
   <!--
@@ -520,15 +430,6 @@
       const VITESSE_MAX_DEGRES_SECONDE = 180;
 
       /*
-        Page ouverte après avoir appuyé
-        sur le bouton Continuer.
-
-        Exemple :
-        const LIEN_SUIVANT = "phare-allume.html";
-      */
-      const LIEN_SUIVANT = "";
-
-      /*
         Dimensions exactes de la photo du phare.
       */
       const LARGEUR_PHOTO = 943;
@@ -549,11 +450,8 @@
       const aide =
         document.querySelector("#aide");
 
-      const termine =
-        document.querySelector("#termine");
-
-      const continuer =
-        document.querySelector("#continuer");
+      const fond =
+        document.querySelector("#fond");
 
       const sonEngrenages =
         document.querySelector("#son-engrenages");
@@ -861,6 +759,21 @@
         /* Démarre les quatre engrenages après le quatrième tour. */
         scene.classList.add("engrenages-actifs");
 
+        /* Affiche immédiatement le nouveau fond. */
+        fond.src = "images/1-png2.png";
+
+        /*
+          Quatre secondes plus tard, affiche très brièvement
+          2-png3.png, puis revient à 1-png2.png.
+        */
+        setTimeout(() => {
+          fond.src = "images/2-png3.png";
+
+          setTimeout(() => {
+            fond.src = "images/1-png2.png";
+          }, 100);
+        }, 4000);
+
         /* Démarre en boucle le son externe du mécanisme. */
         sonEngrenages.currentTime = 0;
         const lectureEngrenages = sonEngrenages.play();
@@ -872,17 +785,6 @@
         }
 
         aide.style.opacity = "0";
-
-        setTimeout(() => {
-          termine.classList.add("visible");
-
-          termine.setAttribute(
-            "aria-hidden",
-            "false"
-          );
-
-          continuer.focus();
-        }, 350);
 
         if (navigator.vibrate) {
           navigator.vibrate([
@@ -928,28 +830,6 @@
       window.addEventListener(
         "orientationchange",
         calculerPositionAxe
-      );
-
-      /*
-        Bouton Continuer.
-      */
-      continuer.addEventListener(
-        "click",
-        () => {
-          if (LIEN_SUIVANT) {
-            window.location.href =
-              LIEN_SUIVANT;
-          } else {
-            termine.classList.remove(
-              "visible"
-            );
-
-            termine.setAttribute(
-              "aria-hidden",
-              "true"
-            );
-          }
-        }
       );
 
       /*
