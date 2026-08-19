@@ -488,6 +488,17 @@
 
   </main>
 
+  <!--
+    Placez le son du mécanisme dans :
+    ../audio/engrenages.mp3
+  -->
+  <audio
+    id="son-engrenages"
+    src="../audio/engrenages.mp3"
+    preload="auto"
+    loop
+  ></audio>
+
   <script>
     (() => {
       /*
@@ -536,6 +547,9 @@
 
       const continuer =
         document.querySelector("#continuer");
+
+      const sonEngrenages =
+        document.querySelector("#son-engrenages");
 
       let actif = false;
       let dernierAngle = 0;
@@ -641,6 +655,44 @@
         oscillateurB.start(maintenant);
         oscillateurA.stop(maintenant + 0.065);
         oscillateurB.stop(maintenant + 0.095);
+      }
+
+      /*
+        Clac grave et puissant joué une seule fois
+        lorsque chaque tour complet est atteint.
+      */
+      function jouerClacDeTour() {
+        preparerAudio();
+
+        const maintenant = audioCtx.currentTime;
+        const oscillateur = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filtre = audioCtx.createBiquadFilter();
+
+        oscillateur.type = "square";
+        oscillateur.frequency.setValueAtTime(185, maintenant);
+        oscillateur.frequency.exponentialRampToValueAtTime(
+          72,
+          maintenant + 0.11
+        );
+
+        filtre.type = "lowpass";
+        filtre.frequency.setValueAtTime(900, maintenant);
+        filtre.Q.value = 1.4;
+
+        gain.gain.setValueAtTime(0.72, maintenant);
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          maintenant + 0.18
+        );
+
+        oscillateur
+          .connect(filtre)
+          .connect(gain)
+          .connect(audioCtx.destination);
+
+        oscillateur.start(maintenant);
+        oscillateur.stop(maintenant + 0.19);
       }
 
       /*
@@ -797,6 +849,8 @@
         if (nouveauxTours > tours) {
           tours = nouveauxTours;
 
+          jouerClacDeTour();
+
           actualiserAffichage();
         }
 
@@ -845,6 +899,16 @@
 
         /* Démarre les quatre engrenages après le quatrième tour. */
         scene.classList.add("engrenages-actifs");
+
+        /* Démarre en boucle le son externe du mécanisme. */
+        sonEngrenages.currentTime = 0;
+        const lectureEngrenages = sonEngrenages.play();
+
+        if (lectureEngrenages) {
+          lectureEngrenages.catch(() => {
+            // Le jeu reste fonctionnel si le fichier audio est absent.
+          });
+        }
 
         aide.style.opacity = "0";
 
