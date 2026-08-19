@@ -1,1 +1,703 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
 
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+  >
+
+  <meta name="theme-color" content="#120b05">
+
+  <title>Mise en marche du phare</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #080604;
+      color: white;
+      font-family: Georgia, serif;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+    }
+
+    .scene {
+      position: relative;
+      width: min(100vw, calc(100svh * 943 / 1668));
+      height: 100svh;
+      max-height: calc(100vw * 1668 / 943);
+      overflow: hidden;
+      background: #130b04;
+      isolation: isolate;
+    }
+
+    .fond {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    .voile {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(
+          #0003 0 10%,
+          transparent 22% 73%,
+          #0005
+        );
+      pointer-events: none;
+    }
+
+    .consigne {
+      position: absolute;
+      z-index: 5;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 88%;
+      padding: 9px 15px;
+      border: 1px solid #e8bd69aa;
+      border-radius: 999px;
+      background: #160d07d9;
+      box-shadow: 0 4px 18px #0009;
+      color: #ffe7ad;
+      text-align: center;
+      font-size: clamp(14px, 4vw, 19px);
+      letter-spacing: 0.02em;
+      transition: 0.35s;
+    }
+
+    .compteur {
+      position: absolute;
+      z-index: 5;
+      top: 18%;
+      right: 4%;
+      width: 72px;
+      padding: 9px 5px;
+      border: 1px solid #d7a84e;
+      border-radius: 9px;
+      background: #160d07dc;
+      box-shadow: 0 5px 20px #000a;
+      text-align: center;
+      color: #ffe4a1;
+    }
+
+    .compteur strong {
+      display: block;
+      font: 700 25px/1 Arial, sans-serif;
+    }
+
+    .compteur small {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /*
+      Position de la manivelle sur l’image.
+
+      left et top permettent de la déplacer.
+      width permet de modifier sa taille.
+    */
+    .manivelle-zone {
+      position: absolute;
+      z-index: 4;
+
+      left: 37.3%;
+      top: 49.5%;
+      width: 58%;
+
+      aspect-ratio: 1774 / 887;
+      touch-action: none;
+      cursor: grab;
+      filter: drop-shadow(0 7px 5px #000b);
+
+      /*
+        Axe de rotation situé au centre du disque
+        de la manivelle.
+      */
+      transform-origin: 19.75% 50%;
+      will-change: transform;
+    }
+
+    .manivelle-zone:active {
+      cursor: grabbing;
+    }
+
+    .manivelle {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    .aide {
+      position: absolute;
+      z-index: 5;
+      left: 50%;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 90%;
+      padding: 8px 13px;
+      border-radius: 7px;
+      background: #0d0805c9;
+      color: #f2d69e;
+      font-size: clamp(12px, 3.4vw, 16px);
+      text-align: center;
+      pointer-events: none;
+      transition: 0.4s;
+    }
+
+    .termine {
+      position: absolute;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #080500a8;
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      visibility: hidden;
+      transition: 0.55s;
+    }
+
+    .termine.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .carte {
+      width: min(360px, 90%);
+      padding: 25px 20px;
+      border: 2px solid #d6a74e;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #3a210d, #130b05);
+      box-shadow: 0 15px 50px #000;
+      text-align: center;
+      color: #ffe9b7;
+    }
+
+    .carte h1 {
+      margin: 0 0 9px;
+      font-size: 25px;
+    }
+
+    .carte p {
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .carte button {
+      margin-top: 18px;
+      padding: 11px 19px;
+      border: 1px solid #ffe0a0;
+      border-radius: 8px;
+      background: #b77822;
+      color: #fff8e8;
+      font: bold 16px Georgia, serif;
+      cursor: pointer;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="scene" id="scene">
+
+    <!-- Image de fond -->
+    <img
+      class="fond"
+      src="images/1-png3.png"
+      alt="Salle du mécanisme du phare"
+    >
+
+    <div class="voile"></div>
+
+    <div class="consigne" id="consigne">
+      Tournez la manivelle quatre tours
+    </div>
+
+    <div class="compteur" aria-live="polite">
+      <strong id="nombreTours">0 / 4</strong>
+      <small>tours</small>
+    </div>
+
+    <!-- Manivelle interactive -->
+    <div
+      class="manivelle-zone"
+      id="manivelle"
+      role="slider"
+      tabindex="0"
+      aria-label="Manivelle du phare"
+      aria-valuemin="0"
+      aria-valuemax="4"
+      aria-valuenow="0"
+    >
+      <img
+        class="manivelle"
+        src="images/1-pngmanivelle.png"
+        alt=""
+      >
+    </div>
+
+    <div class="aide" id="aide">
+      Posez le doigt sur la manivelle et faites-la tourner
+    </div>
+
+    <!-- Message affiché après quatre tours -->
+    <section
+      class="termine"
+      id="termine"
+      aria-hidden="true"
+    >
+      <div class="carte">
+        <h1>Mécanisme enclenché !</h1>
+
+        <p>
+          Les quatre tours sont accomplis.<br>
+          Le phare peut maintenant se mettre en marche.
+        </p>
+
+        <button type="button" id="continuer">
+          Continuer
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    (() => {
+      /*
+        Nombre de tours nécessaires.
+      */
+      const TOURS_REQUIS = 4;
+
+      /*
+        Indiquez ici la page à ouvrir après la réussite.
+
+        Exemple :
+        const LIEN_SUIVANT = "phare-allume.html";
+
+        Laissez vide pour ne pas changer de page.
+      */
+      const LIEN_SUIVANT = "";
+
+      const scene = document.querySelector("#scene");
+      const manivelle = document.querySelector("#manivelle");
+      const compteur = document.querySelector("#nombreTours");
+      const consigne = document.querySelector("#consigne");
+      const aide = document.querySelector("#aide");
+      const termine = document.querySelector("#termine");
+      const continuer = document.querySelector("#continuer");
+
+      let actif = false;
+      let dernierAngle = 0;
+      let rotation = 0;
+      let progression = 0;
+      let tours = 0;
+      let fini = false;
+
+      let pivotX = 0;
+      let pivotY = 0;
+
+      /*
+        Variables utilisées pour produire les sons.
+
+        Aucun fichier audio supplémentaire n’est nécessaire.
+      */
+      let audioCtx;
+      let moteur;
+      let gainMoteur;
+
+      function preparerAudio() {
+        if (!audioCtx) {
+          audioCtx = new (
+            window.AudioContext ||
+            window.webkitAudioContext
+          )();
+        }
+
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+
+      /*
+        Son mécanique joué pendant que le joueur
+        actionne la manivelle.
+      */
+      function demarrerSonMecanique() {
+        preparerAudio();
+
+        if (moteur) {
+          return;
+        }
+
+        moteur = audioCtx.createOscillator();
+        gainMoteur = audioCtx.createGain();
+
+        moteur.type = "sawtooth";
+        moteur.frequency.value = 46;
+
+        gainMoteur.gain.value = 0;
+
+        moteur
+          .connect(gainMoteur)
+          .connect(audioCtx.destination);
+
+        moteur.start();
+
+        gainMoteur.gain.linearRampToValueAtTime(
+          0.035,
+          audioCtx.currentTime + 0.04
+        );
+      }
+
+      function arreterSonMecanique() {
+        if (!moteur) {
+          return;
+        }
+
+        const oscillateur = moteur;
+        const gain = gainMoteur;
+
+        moteur = null;
+        gainMoteur = null;
+
+        gain.gain.cancelScheduledValues(
+          audioCtx.currentTime
+        );
+
+        gain.gain.setValueAtTime(
+          gain.gain.value,
+          audioCtx.currentTime
+        );
+
+        gain.gain.linearRampToValueAtTime(
+          0,
+          audioCtx.currentTime + 0.08
+        );
+
+        oscillateur.stop(
+          audioCtx.currentTime + 0.09
+        );
+      }
+
+      /*
+        Son distinct joué à chaque tour complet.
+      */
+      function jouerSonTour() {
+        preparerAudio();
+
+        const oscillateur = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        oscillateur.type = "triangle";
+
+        oscillateur.frequency.setValueAtTime(
+          520,
+          audioCtx.currentTime
+        );
+
+        oscillateur.frequency.exponentialRampToValueAtTime(
+          760,
+          audioCtx.currentTime + 0.12
+        );
+
+        gain.gain.setValueAtTime(
+          0.16,
+          audioCtx.currentTime
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioCtx.currentTime + 0.28
+        );
+
+        oscillateur
+          .connect(gain)
+          .connect(audioCtx.destination);
+
+        oscillateur.start();
+
+        oscillateur.stop(
+          audioCtx.currentTime + 0.3
+        );
+
+        if (navigator.vibrate) {
+          navigator.vibrate(45);
+        }
+      }
+
+      /*
+        Calcule l’angle du doigt par rapport à
+        l’axe de la manivelle.
+      */
+      function obtenirAngleDuDoigt(evenement) {
+        return (
+          Math.atan2(
+            evenement.clientY - pivotY,
+            evenement.clientX - pivotX
+          ) *
+          180 /
+          Math.PI
+        );
+      }
+
+      /*
+        Début du geste.
+      */
+      function commencerRotation(evenement) {
+        if (fini) {
+          return;
+        }
+
+        evenement.preventDefault();
+
+        const sceneRect =
+          scene.getBoundingClientRect();
+
+        /*
+          L’axe se trouve à 19,75 % de la largeur
+          de l’image de la manivelle.
+        */
+        pivotX =
+          sceneRect.left +
+          manivelle.offsetLeft +
+          manivelle.offsetWidth * 0.1975;
+
+        pivotY =
+          sceneRect.top +
+          manivelle.offsetTop +
+          manivelle.offsetHeight * 0.5;
+
+        actif = true;
+
+        dernierAngle =
+          obtenirAngleDuDoigt(evenement);
+
+        manivelle.setPointerCapture(
+          evenement.pointerId
+        );
+
+        demarrerSonMecanique();
+
+        aide.style.opacity = "0.25";
+      }
+
+      /*
+        Rotation de la manivelle avec le doigt.
+      */
+      function faireTourner(evenement) {
+        if (!actif || fini) {
+          return;
+        }
+
+        evenement.preventDefault();
+
+        const nouvelAngle =
+          obtenirAngleDuDoigt(evenement);
+
+        let difference =
+          nouvelAngle - dernierAngle;
+
+        /*
+          Évite les sauts lorsque l’angle passe
+          de 180 degrés à -180 degrés.
+        */
+        if (difference > 180) {
+          difference -= 360;
+        }
+
+        if (difference < -180) {
+          difference += 360;
+        }
+
+        dernierAngle = nouvelAngle;
+
+        rotation += difference;
+
+        /*
+          Un retour dans le sens inverse retire
+          de la progression.
+        */
+        progression = Math.max(
+          0,
+          progression + difference
+        );
+
+        manivelle.style.transform =
+          `rotate(${rotation}deg)`;
+
+        const nouveauxTours = Math.min(
+          TOURS_REQUIS,
+          Math.floor(progression / 360)
+        );
+
+        /*
+          Un nouveau tour complet vient d’être accompli.
+        */
+        if (nouveauxTours > tours) {
+          tours = nouveauxTours;
+
+          jouerSonTour();
+          actualiserAffichage();
+        }
+
+        if (
+          progression >=
+          TOURS_REQUIS * 360
+        ) {
+          afficherReussite();
+        }
+      }
+
+      /*
+        Le joueur retire son doigt.
+      */
+      function terminerRotation(evenement) {
+        if (!actif) {
+          return;
+        }
+
+        actif = false;
+
+        arreterSonMecanique();
+
+        aide.style.opacity = "1";
+
+        try {
+          manivelle.releasePointerCapture(
+            evenement.pointerId
+          );
+        } catch (erreur) {
+          // Aucun traitement nécessaire.
+        }
+      }
+
+      function actualiserAffichage() {
+        compteur.textContent =
+          `${tours} / ${TOURS_REQUIS}`;
+
+        manivelle.setAttribute(
+          "aria-valuenow",
+          tours
+        );
+
+        const toursRestants =
+          TOURS_REQUIS - tours;
+
+        if (tours === 0) {
+          consigne.textContent =
+            "Tournez la manivelle quatre tours";
+        } else if (toursRestants > 0) {
+          consigne.textContent =
+            `Encore ${toursRestants} tour${
+              toursRestants > 1 ? "s" : ""
+            }`;
+        } else {
+          consigne.textContent =
+            "Mécanisme enclenché";
+        }
+      }
+
+      function afficherReussite() {
+        fini = true;
+        actif = false;
+        tours = TOURS_REQUIS;
+
+        arreterSonMecanique();
+        actualiserAffichage();
+
+        aide.style.opacity = "0";
+
+        setTimeout(() => {
+          termine.classList.add("visible");
+
+          termine.setAttribute(
+            "aria-hidden",
+            "false"
+          );
+
+          continuer.focus();
+        }, 350);
+
+        if (navigator.vibrate) {
+          navigator.vibrate([80, 60, 120]);
+        }
+      }
+
+      manivelle.addEventListener(
+        "pointerdown",
+        commencerRotation
+      );
+
+      manivelle.addEventListener(
+        "pointermove",
+        faireTourner
+      );
+
+      manivelle.addEventListener(
+        "pointerup",
+        terminerRotation
+      );
+
+      manivelle.addEventListener(
+        "pointercancel",
+        terminerRotation
+      );
+
+      continuer.addEventListener(
+        "click",
+        () => {
+          if (LIEN_SUIVANT) {
+            window.location.href =
+              LIEN_SUIVANT;
+          } else {
+            termine.classList.remove(
+              "visible"
+            );
+
+            termine.setAttribute(
+              "aria-hidden",
+              "true"
+            );
+          }
+        }
+      );
+    })();
+  </script>
+
+</body>
+</html>
