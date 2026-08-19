@@ -569,6 +569,7 @@
         Aucun fichier audio n’est nécessaire.
       */
       let audioCtx;
+      let sortieAudio;
       let angleDernierClic = 0;
 
       /*
@@ -579,15 +580,30 @@
 
       function preparerAudio() {
         if (!audioCtx) {
-          audioCtx = new (
-            window.AudioContext ||
-            window.webkitAudioContext
-          )();
+          const AudioContextMobile =
+            window.AudioContext || window.webkitAudioContext;
+
+          if (!AudioContextMobile) {
+            return false;
+          }
+
+          audioCtx = new AudioContextMobile();
+
+          /* Compression finale : son fort sans saturation excessive. */
+          sortieAudio = audioCtx.createDynamicsCompressor();
+          sortieAudio.threshold.value = -18;
+          sortieAudio.knee.value = 8;
+          sortieAudio.ratio.value = 8;
+          sortieAudio.attack.value = 0.002;
+          sortieAudio.release.value = 0.12;
+          sortieAudio.connect(audioCtx.destination);
         }
 
         if (audioCtx.state === "suspended") {
           audioCtx.resume();
         }
+
+        return true;
       }
 
       /*
@@ -595,74 +611,7 @@
         Aucun fichier sonore externe n'est nécessaire.
       */
       function jouerClicMetallique(intensite = 1) {
-        preparerAudio();
-
-        const maintenant = audioCtx.currentTime;
-        const oscillateurA = audioCtx.createOscillator();
-        const oscillateurB = audioCtx.createOscillator();
-        const gainA = audioCtx.createGain();
-        const gainB = audioCtx.createGain();
-        const filtre = audioCtx.createBiquadFilter();
-
-        /* Attaque sèche, semblable au choc de deux pièces d'acier. */
-        oscillateurA.type = "square";
-        oscillateurA.frequency.setValueAtTime(1250, maintenant);
-        oscillateurA.frequency.exponentialRampToValueAtTime(
-          430,
-          maintenant + 0.025
-        );
-
-        /* Petite résonance aiguë qui donne le caractère métallique. */
-        oscillateurB.type = "triangle";
-        oscillateurB.frequency.setValueAtTime(2200, maintenant);
-        oscillateurB.frequency.exponentialRampToValueAtTime(
-          780,
-          maintenant + 0.055
-        );
-
-        filtre.type = "bandpass";
-        filtre.frequency.value = 1150;
-        filtre.Q.value = 3.2;
-
-        gainA.gain.setValueAtTime(
-          Math.min(0.19, 0.12 + intensite * 0.025),
-          maintenant
-        );
-        gainA.gain.exponentialRampToValueAtTime(
-          0.001,
-          maintenant + 0.06
-        );
-
-        gainB.gain.setValueAtTime(
-          Math.min(0.11, 0.065 + intensite * 0.018),
-          maintenant
-        );
-        gainB.gain.exponentialRampToValueAtTime(
-          0.001,
-          maintenant + 0.09
-        );
-
-        oscillateurA
-          .connect(filtre)
-          .connect(gainA)
-          .connect(audioCtx.destination);
-
-        oscillateurB
-          .connect(gainB)
-          .connect(audioCtx.destination);
-
-        oscillateurA.start(maintenant);
-        oscillateurB.start(maintenant);
-        oscillateurA.stop(maintenant + 0.065);
-        oscillateurB.stop(maintenant + 0.095);
-      }
-
-      /*
-        Clac grave et puissant joué une seule fois
-        lorsque chaque tour complet est atteint.
-      */
-      function jouerClacDeTour() {
-        preparerAudio();
+        if (!preparerAudio()) return;
 
         const maintenant = audioCtx.currentTime;
         const oscillateur = audioCtx.createOscillator();
@@ -670,29 +619,71 @@
         const filtre = audioCtx.createBiquadFilter();
 
         oscillateur.type = "square";
-        oscillateur.frequency.setValueAtTime(185, maintenant);
+        oscillateur.frequency.setValueAtTime(720, maintenant);
+        oscillateur.frequency.exponentialRampToValueAtTime(240, maintenant + 0.045);
+        filtre.type = "bandpass";
+        filtre.frequency.value = 620;
+        filtre.Q.value = 2.2;
+        gain.gain.setValueAtTime(Math.min(0.55, 0.38 + intensite * 0.07), maintenant);
+        gain.gain.exponentialRampToValueAtTime(0.001, maintenant + 0.075);
+
+        oscillateur.connect(filtre).connect(gain).connect(sortieAudio);
+        oscillateur.start(maintenant);
+        oscillateur.stop(maintenant + 0.08);
+      }
+
+      /*
+        Clac grave et puissant joué une seule fois
+        lorsque chaque tour complet est atteint.
+      */
+      function jouerClacDeTour() {
+        if (!preparerAudio()) return;
+
+        const maintenant = audioCtx.currentTime;
+        const oscillateur = audioCtx.createOscillator();
+        const bruit = audioCtx.createBufferSource();
+        const gain = audioCtx.createGain();
+        const gainBruit = audioCtx.createGain();
+        const filtre = audioCtx.createBiquadFilter();
+
+        const tampon = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.16, audioCtx.sampleRate);
+        const donnees = tampon.getChannelData(0);
+        for (let i = 0; i < donnees.length; i++) {
+          donnees[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / donnees.length, 3);
+        }
+        bruit.buffer = tampon;
+
+        oscillateur.type = "square";
+        oscillateur.frequency.setValueAtTime(150, maintenant);
         oscillateur.frequency.exponentialRampToValueAtTime(
-          72,
-          maintenant + 0.11
+          58,
+          maintenant + 0.14
         );
 
         filtre.type = "lowpass";
         filtre.frequency.setValueAtTime(900, maintenant);
         filtre.Q.value = 1.4;
 
-        gain.gain.setValueAtTime(0.72, maintenant);
+        gain.gain.setValueAtTime(1, maintenant);
         gain.gain.exponentialRampToValueAtTime(
           0.001,
-          maintenant + 0.18
+          maintenant + 0.22
         );
+
+        gainBruit.gain.setValueAtTime(0.9, maintenant);
+        gainBruit.gain.exponentialRampToValueAtTime(0.001, maintenant + 0.15);
 
         oscillateur
           .connect(filtre)
           .connect(gain)
-          .connect(audioCtx.destination);
+          .connect(sortieAudio);
+
+        bruit.connect(gainBruit).connect(sortieAudio);
 
         oscillateur.start(maintenant);
-        oscillateur.stop(maintenant + 0.19);
+        bruit.start(maintenant);
+        oscillateur.stop(maintenant + 0.23);
+        bruit.stop(maintenant + 0.16);
       }
 
       /*
