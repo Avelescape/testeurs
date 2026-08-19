@@ -204,6 +204,78 @@
       cursor: grabbing;
     }
 
+    /*
+      Quatre engrenages positionnés à partir des
+      coordonnées relevées dans GIMP.
+      Ils sont visibles dès le début, mais immobiles.
+    */
+    .engrenage {
+      position: absolute;
+      z-index: 4;
+
+      left: var(--engrenage-x);
+      top: var(--engrenage-y);
+      width: var(--engrenage-largeur);
+      height: auto;
+
+      display: block;
+      transform: translate(-50%, -50%) rotate(0deg);
+      transform-origin: 50% 50%;
+
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+
+      filter: drop-shadow(0 5px 5px #000a);
+      will-change: transform;
+    }
+
+    .engrenage-1 {
+      --engrenage-x: 63.73%;
+      --engrenage-y: 59.05%;
+      --engrenage-largeur: 13%;
+    }
+
+    .engrenage-2 {
+      --engrenage-x: 62.99%;
+      --engrenage-y: 50.96%;
+      --engrenage-largeur: 17%;
+    }
+
+    .engrenage-3 {
+      --engrenage-x: 50.48%;
+      --engrenage-y: 50.60%;
+      --engrenage-largeur: 13%;
+    }
+
+    .engrenage-4 {
+      --engrenage-x: 38.18%;
+      --engrenage-y: 47.78%;
+      --engrenage-largeur: 17%;
+    }
+
+    .engrenages-actifs .engrenage-1,
+    .engrenages-actifs .engrenage-3 {
+      animation: rotation-engrenage-horaire 2.4s linear infinite;
+    }
+
+    .engrenages-actifs .engrenage-2,
+    .engrenages-actifs .engrenage-4 {
+      animation: rotation-engrenage-antihoraire 3.15s linear infinite;
+    }
+
+    @keyframes rotation-engrenage-horaire {
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    @keyframes rotation-engrenage-antihoraire {
+      to {
+        transform: translate(-50%, -50%) rotate(-360deg);
+      }
+    }
+
     .manivelle {
       display: block;
       width: 100%;
@@ -343,14 +415,34 @@
 
     <div class="voile"></div>
 
-    <div class="consigne" id="consigne">
-      Tournez la manivelle quatre tours
-    </div>
+    <!-- Deux exemplaires de chacun des deux engrenages -->
+    <img
+      class="engrenage engrenage-1"
+      src="images/1-pngengrenage(1).png"
+      alt=""
+      draggable="false"
+    >
 
-    <div class="compteur" aria-live="polite">
-      <strong id="nombreTours">0 / 4</strong>
-      <small>tours</small>
-    </div>
+    <img
+      class="engrenage engrenage-2"
+      src="images/1-pngengrenagegrand(1).png"
+      alt=""
+      draggable="false"
+    >
+
+    <img
+      class="engrenage engrenage-3"
+      src="images/1-pngengrenage(1).png"
+      alt=""
+      draggable="false"
+    >
+
+    <img
+      class="engrenage engrenage-4"
+      src="images/1-pngengrenagegrand(1).png"
+      alt=""
+      draggable="false"
+    >
 
     <!-- Manivelle interactive -->
     <div
@@ -386,13 +478,6 @@
 
       <div class="carte">
 
-        <h1>Mécanisme enclenché !</h1>
-
-        <p>
-          Les quatre tours sont accomplis.<br>
-          Le phare peut maintenant se mettre en marche.
-        </p>
-
         <button type="button" id="continuer">
           Continuer
         </button>
@@ -409,6 +494,12 @@
         Nombre de tours à réaliser.
       */
       const TOURS_REQUIS = 4;
+
+      /*
+        Vitesse maximale : 180 degrés par seconde,
+        soit environ un tour toutes les deux secondes.
+      */
+      const VITESSE_MAX_DEGRES_SECONDE = 180;
 
       /*
         Page ouverte après avoir appuyé
@@ -437,12 +528,6 @@
       const manivelle =
         document.querySelector("#manivelle");
 
-      const compteur =
-        document.querySelector("#nombreTours");
-
-      const consigne =
-        document.querySelector("#consigne");
-
       const aide =
         document.querySelector("#aide");
 
@@ -454,6 +539,7 @@
 
       let actif = false;
       let dernierAngle = 0;
+      let dernierInstant = 0;
 
       let rotation = 0;
       let progression = 0;
@@ -469,8 +555,13 @@
         Aucun fichier audio n’est nécessaire.
       */
       let audioCtx;
-      let moteur;
-      let gainMoteur;
+      let angleDernierClic = 0;
+
+      /*
+        Un clic est produit tous les 15 degrés de rotation.
+        Diminuez cette valeur pour avoir davantage de clics.
+      */
+      const PAS_CLIC_METALLIQUE = 15;
 
       function preparerAudio() {
         if (!audioCtx) {
@@ -486,117 +577,70 @@
       }
 
       /*
-        Bruit mécanique entendu lorsque
-        le joueur tourne la manivelle.
+        Petit claquement métallique créé avec Web Audio.
+        Aucun fichier sonore externe n'est nécessaire.
       */
-      function demarrerSonMecanique() {
+      function jouerClicMetallique(intensite = 1) {
         preparerAudio();
 
-        if (moteur) {
-          return;
-        }
+        const maintenant = audioCtx.currentTime;
+        const oscillateurA = audioCtx.createOscillator();
+        const oscillateurB = audioCtx.createOscillator();
+        const gainA = audioCtx.createGain();
+        const gainB = audioCtx.createGain();
+        const filtre = audioCtx.createBiquadFilter();
 
-        moteur =
-          audioCtx.createOscillator();
-
-        gainMoteur =
-          audioCtx.createGain();
-
-        moteur.type = "sawtooth";
-        moteur.frequency.value = 46;
-
-        gainMoteur.gain.value = 0;
-
-        moteur
-          .connect(gainMoteur)
-          .connect(audioCtx.destination);
-
-        moteur.start();
-
-        gainMoteur.gain.linearRampToValueAtTime(
-          0.035,
-          audioCtx.currentTime + 0.04
-        );
-      }
-
-      function arreterSonMecanique() {
-        if (!moteur) {
-          return;
-        }
-
-        const oscillateur = moteur;
-        const gain = gainMoteur;
-
-        moteur = null;
-        gainMoteur = null;
-
-        gain.gain.cancelScheduledValues(
-          audioCtx.currentTime
+        /* Attaque sèche, semblable au choc de deux pièces d'acier. */
+        oscillateurA.type = "square";
+        oscillateurA.frequency.setValueAtTime(1250, maintenant);
+        oscillateurA.frequency.exponentialRampToValueAtTime(
+          430,
+          maintenant + 0.025
         );
 
-        gain.gain.setValueAtTime(
-          gain.gain.value,
-          audioCtx.currentTime
+        /* Petite résonance aiguë qui donne le caractère métallique. */
+        oscillateurB.type = "triangle";
+        oscillateurB.frequency.setValueAtTime(2200, maintenant);
+        oscillateurB.frequency.exponentialRampToValueAtTime(
+          780,
+          maintenant + 0.055
         );
 
-        gain.gain.linearRampToValueAtTime(
-          0,
-          audioCtx.currentTime + 0.08
+        filtre.type = "bandpass";
+        filtre.frequency.value = 1150;
+        filtre.Q.value = 3.2;
+
+        gainA.gain.setValueAtTime(
+          Math.min(0.19, 0.12 + intensite * 0.025),
+          maintenant
         );
-
-        oscillateur.stop(
-          audioCtx.currentTime + 0.09
-        );
-      }
-
-      /*
-        Son joué après chaque tour complet.
-      */
-      function jouerSonTour() {
-        preparerAudio();
-
-        const oscillateur =
-          audioCtx.createOscillator();
-
-        const gain =
-          audioCtx.createGain();
-
-        oscillateur.type = "triangle";
-
-        oscillateur.frequency.setValueAtTime(
-          520,
-          audioCtx.currentTime
-        );
-
-        oscillateur.frequency
-          .exponentialRampToValueAtTime(
-            760,
-            audioCtx.currentTime + 0.12
-          );
-
-        gain.gain.setValueAtTime(
-          0.16,
-          audioCtx.currentTime
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
+        gainA.gain.exponentialRampToValueAtTime(
           0.001,
-          audioCtx.currentTime + 0.28
+          maintenant + 0.06
         );
 
-        oscillateur
-          .connect(gain)
+        gainB.gain.setValueAtTime(
+          Math.min(0.11, 0.065 + intensite * 0.018),
+          maintenant
+        );
+        gainB.gain.exponentialRampToValueAtTime(
+          0.001,
+          maintenant + 0.09
+        );
+
+        oscillateurA
+          .connect(filtre)
+          .connect(gainA)
           .connect(audioCtx.destination);
 
-        oscillateur.start();
+        oscillateurB
+          .connect(gainB)
+          .connect(audioCtx.destination);
 
-        oscillateur.stop(
-          audioCtx.currentTime + 0.3
-        );
-
-        if (navigator.vibrate) {
-          navigator.vibrate(45);
-        }
+        oscillateurA.start(maintenant);
+        oscillateurB.start(maintenant);
+        oscillateurA.stop(maintenant + 0.065);
+        oscillateurB.stop(maintenant + 0.095);
       }
 
       /*
@@ -655,11 +699,14 @@
         dernierAngle =
           obtenirAngleDuDoigt(evenement);
 
+        dernierInstant = evenement.timeStamp;
+
         manivelle.setPointerCapture(
           evenement.pointerId
         );
 
-        demarrerSonMecanique();
+        preparerAudio();
+        angleDernierClic = rotation;
 
         aide.style.opacity = "0.25";
       }
@@ -680,6 +727,11 @@
         let difference =
           nouvelAngle - dernierAngle;
 
+        const tempsEcoule = Math.max(
+          1,
+          evenement.timeStamp - dernierInstant
+        );
+
         /*
           Empêche le saut de rotation lorsque
           l’angle passe de 180° à -180°.
@@ -692,9 +744,35 @@
           difference += 360;
         }
 
+        /*
+          Empêche le joueur de faire tourner la manivelle
+          plus vite que la vitesse maximale autorisée.
+        */
+        const deplacementMaximum =
+          VITESSE_MAX_DEGRES_SECONDE *
+          tempsEcoule /
+          1000;
+
+        difference = Math.max(
+          -deplacementMaximum,
+          Math.min(deplacementMaximum, difference)
+        );
+
         dernierAngle = nouvelAngle;
+        dernierInstant = evenement.timeStamp;
 
         rotation += difference;
+
+        /* Clics métalliques calés sur la rotation réelle. */
+        if (
+          Math.abs(rotation - angleDernierClic) >=
+          PAS_CLIC_METALLIQUE
+        ) {
+          jouerClicMetallique(
+            Math.min(2, Math.abs(difference) / 8)
+          );
+          angleDernierClic = rotation;
+        }
 
         /*
           Les tours doivent être réalisés
@@ -719,7 +797,6 @@
         if (nouveauxTours > tours) {
           tours = nouveauxTours;
 
-          jouerSonTour();
           actualiserAffichage();
         }
 
@@ -741,8 +818,6 @@
 
         actif = false;
 
-        arreterSonMecanique();
-
         aide.style.opacity = "1";
 
         try {
@@ -755,29 +830,10 @@
       }
 
       function actualiserAffichage() {
-        compteur.textContent =
-          `${tours} / ${TOURS_REQUIS}`;
-
         manivelle.setAttribute(
           "aria-valuenow",
           tours
         );
-
-        const toursRestants =
-          TOURS_REQUIS - tours;
-
-        if (tours === 0) {
-          consigne.textContent =
-            "Tournez la manivelle quatre tours";
-        } else if (toursRestants > 0) {
-          consigne.textContent =
-            `Encore ${toursRestants} tour${
-              toursRestants > 1 ? "s" : ""
-            }`;
-        } else {
-          consigne.textContent =
-            "Mécanisme enclenché";
-        }
       }
 
       function afficherReussite() {
@@ -785,8 +841,10 @@
         actif = false;
         tours = TOURS_REQUIS;
 
-        arreterSonMecanique();
         actualiserAffichage();
+
+        /* Démarre les quatre engrenages après le quatrième tour. */
+        scene.classList.add("engrenages-actifs");
 
         aide.style.opacity = "0";
 
