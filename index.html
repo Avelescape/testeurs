@@ -499,6 +499,13 @@
     loop
   ></audio>
 
+  <!-- Son joué une fois à chaque tour complet. -->
+  <audio
+    id="son-tour"
+    src="../audio/clac.mp3"
+    preload="auto"
+  ></audio>
+
   <script>
     (() => {
       /*
@@ -550,6 +557,9 @@
 
       const sonEngrenages =
         document.querySelector("#son-engrenages");
+
+      const sonTour =
+        document.querySelector("#son-tour");
 
       let actif = false;
       let dernierAngle = 0;
@@ -632,58 +642,18 @@
         oscillateur.stop(maintenant + 0.08);
       }
 
-      /*
-        Clac grave et puissant joué une seule fois
-        lorsque chaque tour complet est atteint.
-      */
+      /* Joue le fichier audio une fois à chaque tour complet. */
       function jouerClacDeTour() {
-        if (!preparerAudio()) return;
+        sonTour.pause();
+        sonTour.currentTime = 0;
 
-        const maintenant = audioCtx.currentTime;
-        const oscillateur = audioCtx.createOscillator();
-        const bruit = audioCtx.createBufferSource();
-        const gain = audioCtx.createGain();
-        const gainBruit = audioCtx.createGain();
-        const filtre = audioCtx.createBiquadFilter();
+        const lectureTour = sonTour.play();
 
-        const tampon = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.16, audioCtx.sampleRate);
-        const donnees = tampon.getChannelData(0);
-        for (let i = 0; i < donnees.length; i++) {
-          donnees[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / donnees.length, 3);
+        if (lectureTour) {
+          lectureTour.catch(() => {
+            // Le jeu reste fonctionnel si le fichier est absent.
+          });
         }
-        bruit.buffer = tampon;
-
-        oscillateur.type = "square";
-        oscillateur.frequency.setValueAtTime(150, maintenant);
-        oscillateur.frequency.exponentialRampToValueAtTime(
-          58,
-          maintenant + 0.14
-        );
-
-        filtre.type = "lowpass";
-        filtre.frequency.setValueAtTime(900, maintenant);
-        filtre.Q.value = 1.4;
-
-        gain.gain.setValueAtTime(1, maintenant);
-        gain.gain.exponentialRampToValueAtTime(
-          0.001,
-          maintenant + 0.22
-        );
-
-        gainBruit.gain.setValueAtTime(0.9, maintenant);
-        gainBruit.gain.exponentialRampToValueAtTime(0.001, maintenant + 0.15);
-
-        oscillateur
-          .connect(filtre)
-          .connect(gain)
-          .connect(sortieAudio);
-
-        bruit.connect(gainBruit).connect(sortieAudio);
-
-        oscillateur.start(maintenant);
-        bruit.start(maintenant);
-        oscillateur.stop(maintenant + 0.23);
-        bruit.stop(maintenant + 0.16);
       }
 
       /*
