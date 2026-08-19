@@ -459,6 +459,20 @@
       const sonTour =
         document.querySelector("#son-tour");
 
+      /*
+        Précharge les deux fonds afin que le changement soit
+        instantané, y compris lors de la première apparition.
+      */
+      const fondNormal = new Image();
+      fondNormal.src = "images/1-png2.png";
+
+      const fondEclair = new Image();
+      fondEclair.src = "images/1-png1.png";
+
+      let minuteriePremierEclair = null;
+      let minuterieEclairsSuivants = null;
+      let minuterieRetourFond = null;
+
       let actif = false;
       let dernierAngle = 0;
       let dernierInstant = 0;
@@ -759,19 +773,31 @@
         /* Démarre les quatre engrenages après le quatrième tour. */
         scene.classList.add("engrenages-actifs");
 
-        /* Affiche immédiatement le nouveau fond. */
+        /* Affiche immédiatement le fond normal du mécanisme actif. */
         fond.src = "images/1-png2.png";
 
         /*
-          Quatre secondes plus tard, affiche très brièvement
-          1-png1.png, puis revient à 1-png2.png.
+          Affiche très brièvement 1-png1.png, puis revient
+          automatiquement à 1-png2.png.
         */
-        setTimeout(() => {
+        function montrerEclair() {
+          clearTimeout(minuterieRetourFond);
           fond.src = "images/1-png1.png";
 
-          setTimeout(() => {
+          minuterieRetourFond = setTimeout(() => {
             fond.src = "images/1-png2.png";
           }, 400);
+        }
+
+        /* Premier éclair exactement quatre secondes après la réussite. */
+        minuteriePremierEclair = setTimeout(() => {
+          montrerEclair();
+
+          /* Puis un nouvel éclair toutes les dix secondes. */
+          minuterieEclairsSuivants = setInterval(
+            montrerEclair,
+            10000
+          );
         }, 4000);
 
         /* Démarre en boucle le son externe du mécanisme. */
