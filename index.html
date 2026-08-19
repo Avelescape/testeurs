@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1742,6 +1740,25 @@ html, body, body *, button, .btn-primary, input, textarea, select {
       transition: opacity 0.4s;
     }
 
+    .phare-continuer {
+      position: absolute;
+      z-index: 8;
+      left: 50%;
+      bottom: max(22px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      display: none;
+      min-width: 170px;
+      padding: 12px 24px;
+      border: 1px solid #e8bd69;
+      border-radius: 999px;
+      background: #160d07e8;
+      box-shadow: 0 5px 22px #000b;
+      color: #ffe7ad;
+      font: 700 clamp(15px, 4vw, 19px)/1.2 Georgia, serif;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       #screen-sommetphare * {
         transition: none !important;
@@ -2152,6 +2169,10 @@ html, body, body *, button, .btn-primary, input, textarea, select {
     <div class="phare-aide" id="phare-aide">
       Posez le doigt sur la manivelle et faites-la tourner
     </div>
+
+    <button class="phare-continuer" id="phare-continuer" type="button">
+      Continuer
+    </button>
 
   </main>
 
@@ -3386,6 +3407,9 @@ function retourSite() {
       const sonTour =
         document.querySelector("#phare-son-tour");
 
+      const boutonContinuer =
+        document.querySelector("#phare-continuer");
+
       /*
         Précharge les deux fonds afin que le changement soit
         instantané, y compris lors de la première apparition.
@@ -3720,6 +3744,9 @@ function retourSite() {
         minuteriePremierEclair = setTimeout(() => {
           montrerEclair();
 
+          /* Le joueur peut poursuivre après le premier éclair du phare. */
+          boutonContinuer.style.display = "block";
+
           /* Puis un nouvel éclair toutes les dix secondes. */
           minuterieEclairsSuivants = setInterval(
             montrerEclair,
@@ -3770,6 +3797,14 @@ function retourSite() {
         "pointercancel",
         terminerRotation
       );
+
+      boutonContinuer.addEventListener("click", () => {
+        clearTimeout(minuteriePremierEclair);
+        clearTimeout(minuterieRetourFond);
+        clearInterval(minuterieEclairsSuivants);
+        sonEngrenages.pause();
+        showScreen("finaventure");
+      });
 
       /*
         Recalcule l’axe après un changement
